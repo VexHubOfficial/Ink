@@ -1,5 +1,6 @@
 --// MALEVOLENT HUB
---// LocalScript - StarterPlayerScripts or StarterGui
+--// LocalScript
+--// Place in StarterPlayerScripts or StarterGui
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -7,6 +8,18 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+
+--==================================================
+-- CONFIG
+--==================================================
+
+local MAIN_SIZE = UDim2.fromOffset(520, 320)
+
+local RED = Color3.fromRGB(210, 25, 25)
+local DARK_RED = Color3.fromRGB(55, 8, 8)
+local BG = Color3.fromRGB(13, 13, 16)
+local ELEMENT = Color3.fromRGB(25, 25, 29)
+local ELEMENT_HOVER = Color3.fromRGB(55, 12, 12)
 
 --==================================================
 -- GUI
@@ -18,29 +31,37 @@ Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
 Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main window
+--==================================================
+-- MAIN
+--==================================================
+
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(330, 390)
-Main.Position = UDim2.new(0.5, -165, 0.5, -195)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+Main.Size = MAIN_SIZE
+Main.Position = UDim2.new(0.5, -260, 0.5, -160)
+Main.BackgroundColor3 = BG
 Main.BorderSizePixel = 0
+Main.ClipsDescendants = true
 Main.Parent = Gui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = Main
 
-local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(190, 0, 0)
-Stroke.Thickness = 2
-Stroke.Transparency = 0.15
-Stroke.Parent = Main
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = RED
+MainStroke.Thickness = 2
+MainStroke.Transparency = 0.15
+MainStroke.Parent = Main
 
--- Header
+--==================================================
+-- HEADER
+--==================================================
+
 local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 50)
-Header.BackgroundColor3 = Color3.fromRGB(35, 5, 5)
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 52)
+Header.BackgroundColor3 = DARK_RED
 Header.BorderSizePixel = 0
 Header.Parent = Main
 
@@ -49,25 +70,65 @@ HeaderCorner.CornerRadius = UDim.new(0, 12)
 HeaderCorner.Parent = Header
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -60, 1, 0)
-Title.Position = UDim2.fromOffset(15, 0)
 Title.BackgroundTransparency = 1
+Title.Position = UDim2.fromOffset(15, 0)
+Title.Size = UDim2.new(1, -120, 1, 0)
 Title.Text = "MALEVOLENT HUB"
-Title.TextColor3 = Color3.fromRGB(255, 45, 45)
+Title.TextColor3 = RED
 Title.TextSize = 20
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
--- Content
+--==================================================
+-- LOCK BUTTON
+--==================================================
+
+local LockButton = Instance.new("TextButton")
+LockButton.Name = "LockButton"
+LockButton.Size = UDim2.fromOffset(75, 32)
+LockButton.Position = UDim2.new(1, -85, 0, 10)
+LockButton.BackgroundColor3 = ELEMENT
+LockButton.BorderSizePixel = 0
+LockButton.Text = "🔓"
+LockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+LockButton.TextSize = 17
+LockButton.Font = Enum.Font.GothamBold
+LockButton.AutoButtonColor = false
+LockButton.Parent = Header
+
+local LockCorner = Instance.new("UICorner")
+LockCorner.CornerRadius = UDim.new(0, 8)
+LockCorner.Parent = LockButton
+
+local Locked = false
+
+LockButton.MouseButton1Click:Connect(function()
+	Locked = not Locked
+
+	if Locked then
+		LockButton.Text = "🔒"
+		LockButton.BackgroundColor3 = DARK_RED
+	else
+		LockButton.Text = "🔓"
+		LockButton.BackgroundColor3 = ELEMENT
+	end
+end)
+
+--==================================================
+-- SCROLLING CONTENT
+--==================================================
+
 local Content = Instance.new("ScrollingFrame")
-Content.Position = UDim2.fromOffset(10, 60)
-Content.Size = UDim2.new(1, -20, 1, -70)
+Content.Name = "Content"
+Content.Position = UDim2.fromOffset(12, 62)
+Content.Size = UDim2.new(1, -24, 1, -74)
 Content.BackgroundTransparency = 1
 Content.BorderSizePixel = 0
-Content.ScrollBarThickness = 3
-Content.ScrollBarImageColor3 = Color3.fromRGB(210, 0, 0)
-Content.CanvasSize = UDim2.new()
+Content.ScrollBarThickness = 5
+Content.ScrollBarImageColor3 = RED
+Content.ScrollingDirection = Enum.ScrollingDirection.Y
+Content.CanvasSize = UDim2.new(0, 0, 0, 0)
 Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 Content.Parent = Main
 
@@ -76,16 +137,21 @@ Layout.Padding = UDim.new(0, 8)
 Layout.SortOrder = Enum.SortOrder.LayoutOrder
 Layout.Parent = Content
 
+local Padding = Instance.new("UIPadding")
+Padding.PaddingBottom = UDim.new(0, 10)
+Padding.Parent = Content
+
 --==================================================
--- HELPERS
+-- UI HELPERS
 --==================================================
 
 local function Section(text)
+
 	local Label = Instance.new("TextLabel")
-	Label.Size = UDim2.new(1, -5, 0, 30)
+	Label.Size = UDim2.new(1, -5, 0, 28)
 	Label.BackgroundTransparency = 1
 	Label.Text = text
-	Label.TextColor3 = Color3.fromRGB(255, 50, 50)
+	Label.TextColor3 = RED
 	Label.TextSize = 16
 	Label.Font = Enum.Font.GothamBold
 	Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -94,15 +160,17 @@ local function Section(text)
 	return Label
 end
 
-local function TextBox(placeholder)
+local function CreateTextBox(placeholder)
+
 	local Box = Instance.new("TextBox")
-	Box.Size = UDim2.new(1, -5, 0, 40)
-	Box.BackgroundColor3 = Color3.fromRGB(25, 25, 29)
+
+	Box.Size = UDim2.new(1, -5, 0, 38)
+	Box.BackgroundColor3 = ELEMENT
 	Box.BorderSizePixel = 0
 	Box.PlaceholderText = placeholder
-	Box.PlaceholderColor3 = Color3.fromRGB(130, 130, 135)
+	Box.PlaceholderColor3 = Color3.fromRGB(120, 120, 125)
 	Box.Text = ""
-	Box.TextColor3 = Color3.fromRGB(240, 240, 240)
+	Box.TextColor3 = Color3.fromRGB(245, 245, 245)
 	Box.TextSize = 14
 	Box.Font = Enum.Font.Gotham
 	Box.ClearTextOnFocus = false
@@ -112,235 +180,275 @@ local function TextBox(placeholder)
 	Corner.CornerRadius = UDim.new(0, 8)
 	Corner.Parent = Box
 
-	local S = Instance.new("UIStroke")
-	S.Color = Color3.fromRGB(90, 20, 20)
-	S.Thickness = 1
-	S.Parent = Box
+	local Stroke = Instance.new("UIStroke")
+	Stroke.Color = Color3.fromRGB(70, 25, 25)
+	Stroke.Thickness = 1
+	Stroke.Parent = Box
 
 	return Box
 end
 
-local function Button(text)
-	local B = Instance.new("TextButton")
-	B.Size = UDim2.new(1, -5, 0, 40)
-	B.BackgroundColor3 = Color3.fromRGB(45, 10, 10)
-	B.BorderSizePixel = 0
-	B.Text = text
-	B.TextColor3 = Color3.fromRGB(255, 255, 255)
-	B.TextSize = 14
-	B.Font = Enum.Font.GothamBold
-	B.AutoButtonColor = false
-	B.Parent = Content
+local function CreateButton(text)
+
+	local Button = Instance.new("TextButton")
+
+	Button.Size = UDim2.new(1, -5, 0, 38)
+	Button.BackgroundColor3 = DARK_RED
+	Button.BorderSizePixel = 0
+	Button.Text = text
+	Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Button.TextSize = 14
+	Button.Font = Enum.Font.GothamBold
+	Button.AutoButtonColor = false
+	Button.Parent = Content
 
 	local Corner = Instance.new("UICorner")
 	Corner.CornerRadius = UDim.new(0, 8)
-	Corner.Parent = B
+	Corner.Parent = Button
 
-	B.MouseEnter:Connect(function()
+	Button.MouseEnter:Connect(function()
 		TweenService:Create(
-			B,
-			TweenInfo.new(0.15),
-			{BackgroundColor3 = Color3.fromRGB(75, 12, 12)}
+			Button,
+			TweenInfo.new(0.12),
+			{BackgroundColor3 = ELEMENT_HOVER}
 		):Play()
 	end)
 
-	B.MouseLeave:Connect(function()
+	Button.MouseLeave:Connect(function()
 		TweenService:Create(
-			B,
-			TweenInfo.new(0.15),
-			{BackgroundColor3 = Color3.fromRGB(45, 10, 10)}
+			Button,
+			TweenInfo.new(0.12),
+			{BackgroundColor3 = DARK_RED}
 		):Play()
 	end)
 
-	return B
+	return Button
 end
 
-local function Toggle(text)
-	local B = Instance.new("TextButton")
-	B.Size = UDim2.new(1, -5, 0, 40)
-	B.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-	B.BorderSizePixel = 0
-	B.Text = text .. "  [ OFF ]"
-	B.TextColor3 = Color3.fromRGB(240, 240, 240)
-	B.TextSize = 14
-	B.Font = Enum.Font.GothamBold
-	B.AutoButtonColor = false
-	B.Parent = Content
+local function CreateToggle(text)
+
+	local Button = Instance.new("TextButton")
+
+	Button.Size = UDim2.new(1, -5, 0, 38)
+	Button.BackgroundColor3 = ELEMENT
+	Button.BorderSizePixel = 0
+	Button.Text = text .. "  [ OFF ]"
+	Button.TextColor3 = Color3.fromRGB(245, 245, 245)
+	Button.TextSize = 14
+	Button.Font = Enum.Font.GothamBold
+	Button.AutoButtonColor = false
+	Button.Parent = Content
 
 	local Corner = Instance.new("UICorner")
 	Corner.CornerRadius = UDim.new(0, 8)
-	Corner.Parent = B
+	Corner.Parent = Button
 
 	local Enabled = false
 
-	B.MouseButton1Click:Connect(function()
+	Button.MouseButton1Click:Connect(function()
+
 		Enabled = not Enabled
 
 		if Enabled then
-			B.Text = text .. "  [ ON ]"
-			B.BackgroundColor3 = Color3.fromRGB(130, 10, 10)
+
+			Button.Text = text .. "  [ ON ]"
+			Button.BackgroundColor3 = RED
+
 		else
-			B.Text = text .. "  [ OFF ]"
-			B.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+
+			Button.Text = text .. "  [ OFF ]"
+			Button.BackgroundColor3 = ELEMENT
+
 		end
 	end)
 
-	return B, function()
+	return Button, function()
 		return Enabled
 	end
 end
 
 --==================================================
--- MOVEMENT
+-- MOVEMENT SECTION
 --==================================================
 
-Section("MOVEMENT")
+Section("🚀 MOVEMENT")
 
-local PlayerBox = TextBox("Display name prefix...")
+local PlayerBox = CreateTextBox("Display name prefix...")
 
-local ConstantTP, IsConstantTP = Toggle("Constant TP")
+local ConstantTPButton, IsConstantTP =
+	CreateToggle("Constant TP")
 
 -- Case-insensitive prefix matching
 local function FindPlayer(prefix)
+
 	if prefix == "" then
 		return nil
 	end
 
-	local lowerPrefix = string.lower(prefix)
+	local wanted = string.lower(prefix)
 
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			if string.sub(
-				string.lower(player.DisplayName),
-				1,
-				#lowerPrefix
-			) == lowerPrefix then
-				return player
+	for _, Player in ipairs(Players:GetPlayers()) do
+
+		if Player ~= LocalPlayer then
+
+			local DisplayName =
+				string.lower(Player.DisplayName)
+
+			if string.sub(DisplayName, 1, #wanted) == wanted then
+				return Player
 			end
+
 		end
 	end
 
 	return nil
 end
 
-local TPConnection
+RunService.Heartbeat:Connect(function()
 
-TPConnection = RunService.Heartbeat:Connect(function()
 	if not IsConstantTP() then
 		return
 	end
 
-	local target = FindPlayer(PlayerBox.Text)
+	local Target = FindPlayer(PlayerBox.Text)
 
-	if not target then
+	if not Target then
 		return
 	end
 
-	local targetCharacter = target.Character
-	local myCharacter = LocalPlayer.Character
+	local TargetCharacter = Target.Character
+	local MyCharacter = LocalPlayer.Character
 
-	if not targetCharacter or not myCharacter then
+	if not TargetCharacter or not MyCharacter then
 		return
 	end
 
-	local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
-	local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+	local TargetRoot =
+		TargetCharacter:FindFirstChild("HumanoidRootPart")
 
-	if targetRoot and myRoot then
-		myRoot.CFrame = targetRoot.CFrame + Vector3.new(0, 100, 0)
+	local MyRoot =
+		MyCharacter:FindFirstChild("HumanoidRootPart")
+
+	if TargetRoot and MyRoot then
+
+		MyRoot.CFrame =
+			TargetRoot.CFrame + Vector3.new(0, 100, 0)
+
 	end
 end)
 
 --==================================================
--- PARTS
+-- PARTS SECTION
 --==================================================
 
-Section("PARTS")
+Section("🗑️ PARTS")
 
-local PartBox = TextBox("Part name...")
+local PartBox = CreateTextBox("Part name...")
 
-local DeletePart = Button("DELETE PART")
-local TPPart = Button("TP TO PART")
+local DeletePartButton =
+	CreateButton("DELETE PART")
+
+local TPPartButton =
+	CreateButton("TP TO PART")
 
 local function FindPart(name)
+
 	if name == "" then
 		return nil
 	end
 
 	local wanted = string.lower(name)
 
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			if string.lower(obj.Name) == wanted then
-				return obj
+	for _, Object in ipairs(workspace:GetDescendants()) do
+
+		if Object:IsA("BasePart") then
+
+			if string.lower(Object.Name) == wanted then
+				return Object
 			end
+
 		end
 	end
 
 	return nil
 end
 
--- Client-side only
-DeletePart.MouseButton1Click:Connect(function()
-	local part = FindPart(PartBox.Text)
+-- Client-side visual deletion
+DeletePartButton.MouseButton1Click:Connect(function()
 
-	if part then
-		part.LocalTransparencyModifier = 1
-		part.CanCollide = false
-	end
-end)
+	local Part = FindPart(PartBox.Text)
 
-TPPart.MouseButton1Click:Connect(function()
-	local part = FindPart(PartBox.Text)
-	local character = LocalPlayer.Character
-
-	if not part or not character then
+	if not Part then
 		return
 	end
 
-	local root = character:FindFirstChild("HumanoidRootPart")
+	Part.LocalTransparencyModifier = 1
+	Part.CanCollide = false
+end)
 
-	if root then
-		root.CFrame = part.CFrame + Vector3.new(0, 4, 0)
+-- TP to part
+TPPartButton.MouseButton1Click:Connect(function()
+
+	local Part = FindPart(PartBox.Text)
+
+	if not Part then
+		return
+	end
+
+	local Character = LocalPlayer.Character
+
+	if not Character then
+		return
+	end
+
+	local Root =
+		Character:FindFirstChild("HumanoidRootPart")
+
+	if Root then
+		Root.CFrame =
+			Part.CFrame + Vector3.new(0, 4, 0)
 	end
 end)
 
 --==================================================
--- ALWAYS-VISIBLE COLLAPSE BUTTON
+-- COLLAPSE BUTTON
 --==================================================
 
-local Collapse = Instance.new("TextButton")
-Collapse.Name = "CollapseButton"
-Collapse.Size = UDim2.fromOffset(55, 55)
-Collapse.Position = UDim2.new(0, 15, 0.5, -27)
-Collapse.BackgroundColor3 = Color3.fromRGB(55, 5, 5)
-Collapse.BorderSizePixel = 0
-Collapse.Text = "M"
-Collapse.TextColor3 = Color3.fromRGB(255, 45, 45)
-Collapse.TextSize = 24
-Collapse.Font = Enum.Font.GothamBold
-Collapse.Parent = Gui
+local CollapseButton = Instance.new("TextButton")
+
+CollapseButton.Name = "CollapseButton"
+CollapseButton.Size = UDim2.fromOffset(55, 55)
+CollapseButton.Position = UDim2.new(0, 15, 0.5, -27)
+CollapseButton.BackgroundColor3 = DARK_RED
+CollapseButton.BorderSizePixel = 0
+CollapseButton.Text = "M"
+CollapseButton.TextColor3 = RED
+CollapseButton.TextSize = 24
+CollapseButton.Font = Enum.Font.GothamBold
+CollapseButton.AutoButtonColor = false
+CollapseButton.Parent = Gui
 
 local CollapseCorner = Instance.new("UICorner")
 CollapseCorner.CornerRadius = UDim.new(1, 0)
-CollapseCorner.Parent = Collapse
+CollapseCorner.Parent = CollapseButton
 
 local CollapseStroke = Instance.new("UIStroke")
-CollapseStroke.Color = Color3.fromRGB(210, 0, 0)
+CollapseStroke.Color = RED
 CollapseStroke.Thickness = 2
-CollapseStroke.Parent = Collapse
+CollapseStroke.Parent = CollapseButton
 
 local Open = true
 
-Collapse.MouseButton1Click:Connect(function()
+CollapseButton.MouseButton1Click:Connect(function()
+
 	Open = not Open
 
 	Main.Visible = Open
 
 	if Open then
-		Collapse.Text = "M"
+		CollapseButton.Text = "M"
 	else
-		Collapse.Text = "+"
+		CollapseButton.Text = "+"
 	end
 end)
 
@@ -348,49 +456,68 @@ end)
 -- DRAGGING
 --==================================================
 
-local function MakeDraggable(object)
-	local dragging = false
-	local dragStart
-	local startPosition
+local function MakeDraggable(Object, CanDrag)
 
-	local function update(input)
-		local delta = input.Position - dragStart
+	local Dragging = false
+	local DragStart
+	local StartPosition
 
-		object.Position = UDim2.new(
-			startPosition.X.Scale,
-			startPosition.X.Offset + delta.X,
-			startPosition.Y.Scale,
-			startPosition.Y.Offset + delta.Y
-		)
-	end
+	Object.InputBegan:Connect(function(Input)
 
-	object.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
-
-			dragging = true
-			dragStart = input.Position
-			startPosition = object.Position
-
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
+		if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and Input.UserInputType ~= Enum.UserInputType.Touch then
+			return
 		end
+
+		if CanDrag and not CanDrag() then
+			return
+		end
+
+		Dragging = true
+		DragStart = Input.Position
+		StartPosition = Object.Position
+
+		Input.Changed:Connect(function()
+
+			if Input.UserInputState == Enum.UserInputState.End then
+				Dragging = false
+			end
+
+		end)
 	end)
 
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (
-			input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch
-		) then
-			update(input)
+	UserInputService.InputChanged:Connect(function(Input)
+
+		if not Dragging then
+			return
 		end
+
+		if Input.UserInputType ~= Enum.UserInputType.MouseMovement
+			and Input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+
+		local Delta =
+			Input.Position - DragStart
+
+		Object.Position = UDim2.new(
+			StartPosition.X.Scale,
+			StartPosition.X.Offset + Delta.X,
+
+			StartPosition.Y.Scale,
+			StartPosition.Y.Offset + Delta.Y
+		)
 	end)
 end
 
-MakeDraggable(Main)
-MakeDraggable(Collapse)
+-- Main GUI respects lock
+MakeDraggable(Main, function()
+	return not Locked
+end)
 
-print("Malevolent Hub loaded.")
+-- Collapse button is ALWAYS draggable
+MakeDraggable(CollapseButton, function()
+	return true
+end)
+
+print("Malevolent Hub loaded successfully.")
