@@ -1,11 +1,14 @@
 --// PART BRINGER
 --// LOCAL SCRIPT
+--// Full version
+--//
 --// Features:
 --// • Draggable collapse button
 --// • Part Val
 --// • Client Unanchor
---// • Highlight Part + RED / BLUE / GREEN / X
---// • Exclude Rendered Parts
+--// • Highlight Part
+--// • RED / BLUE / GREEN / X
+--// • Exclude Rendered Parts (>100 studs)
 --// • Bring all parts to me
 --// • Bring me to all parts ASAP
 --// • Bring me to closest part
@@ -16,7 +19,6 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local camera = workspace.CurrentCamera
 
 --==================================================
 -- SETTINGS
@@ -26,7 +28,11 @@ local highlightEnabled = false
 local highlightColor = Color3.fromRGB(255, 60, 60)
 
 local unanchorEnabled = false
+
+-- When enabled, only parts MORE than this distance
+-- away from the player are included.
 local excludeRendered = false
+local renderDistance = 100
 
 local bringSpeed = 150
 local bringDuration = 4
@@ -50,6 +56,7 @@ collapse.Name = "Collapse"
 collapse.Size = UDim2.fromOffset(58, 38)
 collapse.Position = UDim2.new(0, 15, 0.5, -19)
 collapse.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+collapse.BorderSizePixel = 0
 collapse.Text = "PB"
 collapse.TextColor3 = Color3.new(1, 1, 1)
 collapse.TextSize = 16
@@ -137,38 +144,27 @@ boxCorner.CornerRadius = UDim.new(0, 8)
 boxCorner.Parent = box
 
 --==================================================
--- TOGGLE CREATOR
+-- HIGHLIGHT BUTTON
 --==================================================
 
-local function createToggle(text, y)
-	local button = Instance.new("TextButton")
+local highlightButton = Instance.new("TextButton")
+highlightButton.Size = UDim2.new(1, -30, 0, 38)
+highlightButton.Position = UDim2.fromOffset(15, 113)
+highlightButton.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+highlightButton.BorderSizePixel = 0
+highlightButton.Text = "Highlight Part  •  OFF"
+highlightButton.TextColor3 = Color3.new(1, 1, 1)
+highlightButton.TextSize = 14
+highlightButton.Font = Enum.Font.GothamBold
+highlightButton.AutoButtonColor = false
+highlightButton.Parent = main
 
-	button.Size = UDim2.new(1, -30, 0, 38)
-	button.Position = UDim2.fromOffset(15, y)
-	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
-	button.BorderSizePixel = 0
-	button.Text = text .. "  •  OFF"
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.TextSize = 14
-	button.Font = Enum.Font.GothamBold
-	button.AutoButtonColor = false
-	button.Parent = main
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = button
-
-	return button
-end
-
-local highlightButton =
-	createToggle("Highlight Part", 113)
-
-local excludeRenderedButton =
-	createToggle("Exclude Rendered Parts", 159)
+local highlightCorner = Instance.new("UICorner")
+highlightCorner.CornerRadius = UDim.new(0, 8)
+highlightCorner.Parent = highlightButton
 
 --==================================================
--- COLOR BUTTONS
+-- COLOR BUTTON CREATOR
 --==================================================
 
 local function createColorButton(text, color, position)
@@ -195,29 +191,29 @@ end
 local redButton = createColorButton(
 	"RED",
 	Color3.fromRGB(190, 45, 45),
-	UDim2.fromOffset(15, 205)
+	UDim2.fromOffset(15, 160)
 )
 
 local blueButton = createColorButton(
 	"BLUE",
 	Color3.fromRGB(45, 100, 200),
-	UDim2.fromOffset(85, 205)
+	UDim2.fromOffset(85, 160)
 )
 
 local greenButton = createColorButton(
 	"GREEN",
 	Color3.fromRGB(45, 170, 75),
-	UDim2.fromOffset(155, 205)
+	UDim2.fromOffset(155, 160)
 )
 
 local clearButton = createColorButton(
 	"X",
 	Color3.fromRGB(45, 45, 45),
-	UDim2.fromOffset(225, 205)
+	UDim2.fromOffset(225, 160)
 )
 
 --==================================================
--- ACTION BUTTONS
+-- ACTION BUTTON CREATOR
 --==================================================
 
 local function createActionButton(text, y)
@@ -246,46 +242,52 @@ local function createActionButton(text, y)
 	return button
 end
 
+--==================================================
+-- ACTION BUTTONS
+--==================================================
+
+local excludeButton =
+	createActionButton(
+		"Exclude Rendered Parts  •  100 Studs",
+		205
+	)
+
 local unanchorButton =
-	createActionButton("Client Unanchor  •  OFF", 250)
+	createActionButton(
+		"Client Unanchor  •  OFF",
+		260
+	)
 
 local bringAll =
-	createActionButton("Bring all parts to me", 305)
+	createActionButton(
+		"Bring all parts to me",
+		315
+	)
 
 local bringMeAll =
-	createActionButton("Bring me to all parts  •  ASAP", 360)
+	createActionButton(
+		"Bring me to all parts  •  ASAP",
+		370
+	)
 
 local closest =
-	createActionButton("Bring me to closest part", 415)
+	createActionButton(
+		"Bring me to closest part",
+		425
+	)
 
 --==================================================
--- RENDER CHECK
+-- GET ROOT
 --==================================================
 
-local function isRendered(part)
-	if not camera then
-		camera = workspace.CurrentCamera
+local function getRoot()
+	local character = player.Character
+
+	if not character then
+		return nil
 	end
 
-	if not camera or not part then
-		return false
-	end
-
-	local viewportPoint, onScreen =
-		camera:WorldToViewportPoint(part.Position)
-
-	if not onScreen then
-		return false
-	end
-
-	if viewportPoint.Z <= 0 then
-		return false
-	end
-
-	-- Basic visibility/range check.
-	-- This determines whether the part's position is
-	-- currently inside the camera's view.
-	return true
+	return character:FindFirstChild("HumanoidRootPart")
 end
 
 --==================================================
@@ -299,17 +301,26 @@ local function getParts()
 		return {}
 	end
 
+	local root = getRoot()
 	local parts = {}
 
 	for _, object in ipairs(workspace:GetDescendants()) do
 		if object:IsA("BasePart")
 			and object.Name == wantedName then
 
-			if excludeRendered then
-				if not isRendered(object) then
-					table.insert(parts, object)
+			local include = true
+
+			-- Exclude parts within 100 studs.
+			if excludeRendered and root then
+				local distance =
+					(object.Position - root.Position).Magnitude
+
+				if distance <= renderDistance then
+					include = false
 				end
-			else
+			end
+
+			if include then
 				table.insert(parts, object)
 			end
 		end
@@ -317,6 +328,32 @@ local function getParts()
 
 	return parts
 end
+
+--==================================================
+-- EXCLUDE RENDERED PARTS
+--==================================================
+
+excludeButton.MouseButton1Click:Connect(function()
+	excludeRendered = not excludeRendered
+
+	if excludeRendered then
+		excludeButton.Text =
+			"Exclude Rendered Parts  •  ON"
+
+		excludeButton.BackgroundColor3 =
+			Color3.fromRGB(45, 45, 45)
+	else
+		excludeButton.Text =
+			"Exclude Rendered Parts  •  OFF"
+
+		excludeButton.BackgroundColor3 =
+			Color3.fromRGB(30, 30, 30)
+	end
+
+	if highlightEnabled then
+		updateHighlights()
+	end
+end)
 
 --==================================================
 -- CLIENT UNANCHOR
@@ -343,7 +380,7 @@ unanchorButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- HIGHLIGHT
+-- HIGHLIGHTS
 --==================================================
 
 local highlights = {}
@@ -358,7 +395,7 @@ local function clearHighlights()
 	table.clear(highlights)
 end
 
-local function updateHighlights()
+function updateHighlights()
 	clearHighlights()
 
 	if not highlightEnabled then
@@ -412,40 +449,16 @@ end)
 
 clearButton.MouseButton1Click:Connect(function()
 	highlightEnabled = false
-
-	highlightButton.Text =
-		"Highlight Part  •  OFF"
-
+	highlightButton.Text = "Highlight Part  •  OFF"
 	clearHighlights()
 end)
 
 --==================================================
--- EXCLUDE RENDERED
---==================================================
-
-excludeRenderedButton.MouseButton1Click:Connect(function()
-	excludeRendered = not excludeRendered
-
-	excludeRenderedButton.Text =
-		"Exclude Rendered Parts  •  " ..
-		(excludeRendered and "ON" or "OFF")
-
-	updateHighlights()
-end)
-
---==================================================
--- BRING ALL TO PLAYER
+-- BRING ALL PARTS TO PLAYER
 --==================================================
 
 bringAll.MouseButton1Click:Connect(function()
-	local character = player.Character
-
-	if not character then
-		return
-	end
-
-	local root =
-		character:FindFirstChild("HumanoidRootPart")
+	local root = getRoot()
 
 	if not root then
 		return
@@ -473,7 +486,6 @@ bringAll.MouseButton1Click:Connect(function()
 
 			for _, part in ipairs(parts) do
 				if part and part.Parent then
-
 					part.Anchored = false
 
 					local offset =
@@ -505,18 +517,11 @@ bringAll.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- BRING PLAYER TO ALL
+-- BRING PLAYER TO ALL PARTS
 --==================================================
 
 bringMeAll.MouseButton1Click:Connect(function()
-	local character = player.Character
-
-	if not character then
-		return
-	end
-
-	local root =
-		character:FindFirstChild("HumanoidRootPart")
+	local root = getRoot()
 
 	if not root then
 		return
@@ -536,18 +541,11 @@ bringMeAll.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- CLOSEST PART
+-- BRING PLAYER TO CLOSEST PART
 --==================================================
 
 closest.MouseButton1Click:Connect(function()
-	local character = player.Character
-
-	if not character then
-		return
-	end
-
-	local root =
-		character:FindFirstChild("HumanoidRootPart")
+	local root = getRoot()
 
 	if not root then
 		return
@@ -558,7 +556,6 @@ closest.MouseButton1Click:Connect(function()
 
 	for _, part in ipairs(getParts()) do
 		if part and part.Parent then
-
 			local distance =
 				(part.Position - root.Position).Magnitude
 
