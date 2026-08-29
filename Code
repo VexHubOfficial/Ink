@@ -1,0 +1,657 @@
+--// PART BRINGER
+--// LOCAL SCRIPT
+--// Features:
+--// • Draggable collapse button
+--// • Part Val
+--// • Client Unanchor
+--// • Highlight Part + RED / BLUE / GREEN / X
+--// • Exclude Rendered Parts
+--// • Bring all parts to me
+--// • Bring me to all parts ASAP
+--// • Bring me to closest part
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+--==================================================
+-- SETTINGS
+--==================================================
+
+local highlightEnabled = false
+local highlightColor = Color3.fromRGB(255, 60, 60)
+
+local unanchorEnabled = false
+local excludeRendered = false
+
+local bringSpeed = 150
+local bringDuration = 4
+
+--==================================================
+-- GUI
+--==================================================
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "PartBringer"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = playerGui
+
+--==================================================
+-- COLLAPSE BUTTON
+--==================================================
+
+local collapse = Instance.new("TextButton")
+collapse.Name = "Collapse"
+collapse.Size = UDim2.fromOffset(58, 38)
+collapse.Position = UDim2.new(0, 15, 0.5, -19)
+collapse.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+collapse.Text = "PB"
+collapse.TextColor3 = Color3.new(1, 1, 1)
+collapse.TextSize = 16
+collapse.Font = Enum.Font.GothamBold
+collapse.AutoButtonColor = false
+collapse.Parent = gui
+
+local collapseCorner = Instance.new("UICorner")
+collapseCorner.CornerRadius = UDim.new(0, 9)
+collapseCorner.Parent = collapse
+
+local collapseStroke = Instance.new("UIStroke")
+collapseStroke.Color = Color3.fromRGB(70, 70, 70)
+collapseStroke.Thickness = 1
+collapseStroke.Parent = collapse
+
+--==================================================
+-- MAIN FRAME
+--==================================================
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(310, 510)
+main.Position = UDim2.new(0.5, -155, 0.5, -255)
+main.BackgroundColor3 = Color3.fromRGB(17, 17, 17)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 13)
+mainCorner.Parent = main
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(55, 55, 55)
+mainStroke.Thickness = 1
+mainStroke.Parent = main
+
+--==================================================
+-- TITLE
+--==================================================
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -30, 0, 45)
+title.Position = UDim2.fromOffset(15, 5)
+title.BackgroundTransparency = 1
+title.Text = "Part Bringer"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -30, 0, 20)
+subtitle.Position = UDim2.fromOffset(15, 38)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Local physics controls"
+subtitle.TextColor3 = Color3.fromRGB(130, 130, 130)
+subtitle.TextSize = 11
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = main
+
+--==================================================
+-- PART VALUE
+--==================================================
+
+local box = Instance.new("TextBox")
+box.Name = "PartVal"
+box.Size = UDim2.new(1, -30, 0, 40)
+box.Position = UDim2.fromOffset(15, 65)
+box.BackgroundColor3 = Color3.fromRGB(29, 29, 29)
+box.BorderSizePixel = 0
+box.PlaceholderText = "Part Val"
+box.PlaceholderColor3 = Color3.fromRGB(125, 125, 125)
+box.Text = ""
+box.TextColor3 = Color3.new(1, 1, 1)
+box.TextSize = 14
+box.Font = Enum.Font.Gotham
+box.ClearTextOnFocus = false
+box.Parent = main
+
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 8)
+boxCorner.Parent = box
+
+--==================================================
+-- TOGGLE CREATOR
+--==================================================
+
+local function createToggle(text, y)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.new(1, -30, 0, 38)
+	button.Position = UDim2.fromOffset(15, y)
+	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+	button.BorderSizePixel = 0
+	button.Text = text .. "  •  OFF"
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 14
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+
+	return button
+end
+
+local highlightButton =
+	createToggle("Highlight Part", 113)
+
+local excludeRenderedButton =
+	createToggle("Exclude Rendered Parts", 159)
+
+--==================================================
+-- COLOR BUTTONS
+--==================================================
+
+local function createColorButton(text, color, position)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.fromOffset(65, 31)
+	button.Position = position
+	button.BackgroundColor3 = color
+	button.BorderSizePixel = 0
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 12
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 7)
+	corner.Parent = button
+
+	return button
+end
+
+local redButton = createColorButton(
+	"RED",
+	Color3.fromRGB(190, 45, 45),
+	UDim2.fromOffset(15, 205)
+)
+
+local blueButton = createColorButton(
+	"BLUE",
+	Color3.fromRGB(45, 100, 200),
+	UDim2.fromOffset(85, 205)
+)
+
+local greenButton = createColorButton(
+	"GREEN",
+	Color3.fromRGB(45, 170, 75),
+	UDim2.fromOffset(155, 205)
+)
+
+local clearButton = createColorButton(
+	"X",
+	Color3.fromRGB(45, 45, 45),
+	UDim2.fromOffset(225, 205)
+)
+
+--==================================================
+-- ACTION BUTTONS
+--==================================================
+
+local function createActionButton(text, y)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.new(1, -30, 0, 45)
+	button.Position = UDim2.fromOffset(15, y)
+	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	button.BorderSizePixel = 0
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 14
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 9)
+	corner.Parent = button
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(50, 50, 50)
+	stroke.Thickness = 1
+	stroke.Parent = button
+
+	return button
+end
+
+local unanchorButton =
+	createActionButton("Client Unanchor  •  OFF", 250)
+
+local bringAll =
+	createActionButton("Bring all parts to me", 305)
+
+local bringMeAll =
+	createActionButton("Bring me to all parts  •  ASAP", 360)
+
+local closest =
+	createActionButton("Bring me to closest part", 415)
+
+--==================================================
+-- RENDER CHECK
+--==================================================
+
+local function isRendered(part)
+	if not camera then
+		camera = workspace.CurrentCamera
+	end
+
+	if not camera or not part then
+		return false
+	end
+
+	local viewportPoint, onScreen =
+		camera:WorldToViewportPoint(part.Position)
+
+	if not onScreen then
+		return false
+	end
+
+	if viewportPoint.Z <= 0 then
+		return false
+	end
+
+	-- Basic visibility/range check.
+	-- This determines whether the part's position is
+	-- currently inside the camera's view.
+	return true
+end
+
+--==================================================
+-- GET MATCHING PARTS
+--==================================================
+
+local function getParts()
+	local wantedName = box.Text
+
+	if wantedName == "" then
+		return {}
+	end
+
+	local parts = {}
+
+	for _, object in ipairs(workspace:GetDescendants()) do
+		if object:IsA("BasePart")
+			and object.Name == wantedName then
+
+			if excludeRendered then
+				if not isRendered(object) then
+					table.insert(parts, object)
+				end
+			else
+				table.insert(parts, object)
+			end
+		end
+	end
+
+	return parts
+end
+
+--==================================================
+-- CLIENT UNANCHOR
+--==================================================
+
+local function unanchorParts()
+	for _, part in ipairs(getParts()) do
+		if part and part.Parent then
+			part.Anchored = false
+		end
+	end
+end
+
+unanchorButton.MouseButton1Click:Connect(function()
+	unanchorEnabled = not unanchorEnabled
+
+	unanchorButton.Text =
+		"Client Unanchor  •  " ..
+		(unanchorEnabled and "ON" or "OFF")
+
+	if unanchorEnabled then
+		unanchorParts()
+	end
+end)
+
+--==================================================
+-- HIGHLIGHT
+--==================================================
+
+local highlights = {}
+
+local function clearHighlights()
+	for _, highlight in ipairs(highlights) do
+		if highlight and highlight.Parent then
+			highlight:Destroy()
+		end
+	end
+
+	table.clear(highlights)
+end
+
+local function updateHighlights()
+	clearHighlights()
+
+	if not highlightEnabled then
+		return
+	end
+
+	for _, part in ipairs(getParts()) do
+		if part and part.Parent then
+			local highlight = Instance.new("Highlight")
+
+			highlight.Name = "PartBringerHighlight"
+			highlight.Adornee = part
+			highlight.FillColor = highlightColor
+			highlight.OutlineColor = highlightColor
+			highlight.FillTransparency = 0.5
+			highlight.OutlineTransparency = 0
+			highlight.DepthMode =
+				Enum.HighlightDepthMode.AlwaysOnTop
+
+			highlight.Parent = part
+
+			table.insert(highlights, highlight)
+		end
+	end
+end
+
+highlightButton.MouseButton1Click:Connect(function()
+	highlightEnabled = not highlightEnabled
+
+	highlightButton.Text =
+		"Highlight Part  •  " ..
+		(highlightEnabled and "ON" or "OFF")
+
+	updateHighlights()
+end)
+
+redButton.MouseButton1Click:Connect(function()
+	highlightColor = Color3.fromRGB(255, 60, 60)
+	updateHighlights()
+end)
+
+blueButton.MouseButton1Click:Connect(function()
+	highlightColor = Color3.fromRGB(60, 130, 255)
+	updateHighlights()
+end)
+
+greenButton.MouseButton1Click:Connect(function()
+	highlightColor = Color3.fromRGB(60, 255, 100)
+	updateHighlights()
+end)
+
+clearButton.MouseButton1Click:Connect(function()
+	highlightEnabled = false
+
+	highlightButton.Text =
+		"Highlight Part  •  OFF"
+
+	clearHighlights()
+end)
+
+--==================================================
+-- EXCLUDE RENDERED
+--==================================================
+
+excludeRenderedButton.MouseButton1Click:Connect(function()
+	excludeRendered = not excludeRendered
+
+	excludeRenderedButton.Text =
+		"Exclude Rendered Parts  •  " ..
+		(excludeRendered and "ON" or "OFF")
+
+	updateHighlights()
+end)
+
+--==================================================
+-- BRING ALL TO PLAYER
+--==================================================
+
+bringAll.MouseButton1Click:Connect(function()
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local root =
+		character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	local parts = getParts()
+
+	if #parts == 0 then
+		return
+	end
+
+	for _, part in ipairs(parts) do
+		if part and part.Parent then
+			part.Anchored = false
+		end
+	end
+
+	task.spawn(function()
+		local startTime = os.clock()
+
+		while os.clock() - startTime < bringDuration do
+			if not root.Parent then
+				break
+			end
+
+			for _, part in ipairs(parts) do
+				if part and part.Parent then
+
+					part.Anchored = false
+
+					local offset =
+						root.Position - part.Position
+
+					local distance =
+						offset.Magnitude
+
+					if distance > 3 then
+						part.AssemblyLinearVelocity =
+							offset.Unit *
+							math.min(
+								distance * 10,
+								bringSpeed
+							)
+					else
+						part.AssemblyLinearVelocity =
+							Vector3.zero
+					end
+
+					part.AssemblyAngularVelocity =
+						Vector3.zero
+				end
+			end
+
+			RunService.Heartbeat:Wait()
+		end
+	end)
+end)
+
+--==================================================
+-- BRING PLAYER TO ALL
+--==================================================
+
+bringMeAll.MouseButton1Click:Connect(function()
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local root =
+		character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	local parts = getParts()
+
+	for _, part in ipairs(parts) do
+		if part and part.Parent then
+			root.CFrame =
+				part.CFrame +
+				Vector3.new(0, 3, 0)
+
+			RunService.Heartbeat:Wait()
+		end
+	end
+end)
+
+--==================================================
+-- CLOSEST PART
+--==================================================
+
+closest.MouseButton1Click:Connect(function()
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local root =
+		character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	local closestPart = nil
+	local closestDistance = math.huge
+
+	for _, part in ipairs(getParts()) do
+		if part and part.Parent then
+
+			local distance =
+				(part.Position - root.Position).Magnitude
+
+			if distance < closestDistance then
+				closestDistance = distance
+				closestPart = part
+			end
+		end
+	end
+
+	if closestPart then
+		root.CFrame =
+			closestPart.CFrame +
+			Vector3.new(0, 3, 0)
+	end
+end)
+
+--==================================================
+-- HIGHLIGHT REFRESH
+--==================================================
+
+task.spawn(function()
+	while gui.Parent do
+		if highlightEnabled then
+			updateHighlights()
+		end
+
+		task.wait(0.5)
+	end
+end)
+
+--==================================================
+-- COLLAPSE
+--==================================================
+
+local expanded = true
+
+collapse.MouseButton1Click:Connect(function()
+	expanded = not expanded
+
+	main.Visible = expanded
+	collapse.Text = expanded and "PB" or ">"
+end)
+
+--==================================================
+-- DRAGGING
+--==================================================
+
+local function makeDraggable(object)
+	local dragging = false
+	local dragStart
+	local startPosition
+
+	object.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			dragging = true
+			dragStart = input.Position
+			startPosition = object.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState ==
+					Enum.UserInputState.End then
+
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then
+			return
+		end
+
+		if input.UserInputType ==
+			Enum.UserInputType.MouseMovement
+			or input.UserInputType ==
+			Enum.UserInputType.Touch then
+
+			local delta =
+				input.Position - dragStart
+
+			object.Position = UDim2.new(
+				startPosition.X.Scale,
+				startPosition.X.Offset + delta.X,
+				startPosition.Y.Scale,
+				startPosition.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+makeDraggable(main)
+makeDraggable(collapse)
