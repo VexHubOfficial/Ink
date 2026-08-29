@@ -1,7 +1,6 @@
 --// MALEVOLENT HUB
 --// LocalScript
---// For use in your own Roblox experience
---// StarterPlayerScripts or StarterGui
+--// For your own Roblox experience / testing
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -21,6 +20,18 @@ local ELEMENT = Color3.fromRGB(24, 24, 28)
 local HOVER = Color3.fromRGB(65, 10, 10)
 local WHITE = Color3.fromRGB(245, 245, 245)
 local PURPLE = Color3.fromRGB(170, 50, 255)
+
+--==================================================
+-- STATE
+--==================================================
+
+local Locked = false
+local MainOpen = true
+local NoclipEnabled = false
+local ESPEnabled = false
+
+-- [Player] = true
+local PermanentPlayers = {}
 
 --==================================================
 -- GUI
@@ -76,7 +87,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
 --==================================================
--- LOCK
+-- LOCK BUTTON
 --==================================================
 
 local LockButton = Instance.new("TextButton")
@@ -94,8 +105,6 @@ LockButton.Parent = Header
 local LockCorner = Instance.new("UICorner")
 LockCorner.CornerRadius = UDim.new(0, 8)
 LockCorner.Parent = LockButton
-
-local Locked = false
 
 LockButton.MouseButton1Click:Connect(function()
 	Locked = not Locked
@@ -254,35 +263,37 @@ local PlayerBox = TextBox("Display name prefix...")
 local TPPlayerButton, IsTPPlayer =
 	Toggle("TP TO PLAYER")
 
-local TPBehindDistance = 5
+local NoclipButton, IsNoclip =
+	Toggle("NOCLIP")
 
-local function FindPlayer(Prefix)
-	if Prefix == "" then
-		return nil
-	end
-
-	local Wanted = string.lower(Prefix)
-
-	for _, Player in ipairs(Players:GetPlayers()) do
-		if Player ~= LocalPlayer then
-			local DisplayName = string.lower(Player.DisplayName)
-
-			if string.sub(DisplayName, 1, #Wanted) == Wanted then
-				return Player
-			end
-		end
-	end
-
-	return nil
-end
-
--- Continuously stay behind selected player
+-- Keep behind target
 RunService.Heartbeat:Connect(function()
+
 	if not IsTPPlayer() then
 		return
 	end
 
-	local Target = FindPlayer(PlayerBox.Text)
+	local Prefix = PlayerBox.Text
+
+	if Prefix == "" then
+		return
+	end
+
+	local Wanted = string.lower(Prefix)
+	local Target
+
+	for _, Player in ipairs(Players:GetPlayers()) do
+		if Player ~= LocalPlayer then
+
+			local DisplayName =
+				string.lower(Player.DisplayName)
+
+			if string.sub(DisplayName, 1, #Wanted) == Wanted then
+				Target = Player
+				break
+			end
+		end
+	end
 
 	if not Target then
 		return
@@ -302,14 +313,67 @@ RunService.Heartbeat:Connect(function()
 		MyCharacter:FindFirstChild("HumanoidRootPart")
 
 	if TargetRoot and MyRoot then
+
 		MyRoot.CFrame =
-			TargetRoot.CFrame *
-			CFrame.new(0, 0, TPBehindDistance)
+			TargetRoot.CFrame * CFrame.new(0, 0, 5)
+
 	end
 end)
 
 --==================================================
--- VERTICAL TELEPORTS
+-- NOCLIP
+--==================================================
+
+RunService.Stepped:Connect(function()
+
+	if not IsNoclip() then
+		return
+	end
+
+	local Character = LocalPlayer.Character
+
+	if not Character then
+		return
+	end
+
+	for _, Object in ipairs(Character:GetDescendants()) do
+
+		if Object:IsA("BasePart") then
+			Object.CanCollide = false
+		end
+
+	end
+end)
+
+-- Restore collisions when noclip turns off
+local LastNoclipState = false
+
+RunService.Heartbeat:Connect(function()
+
+	local Current = IsNoclip()
+
+	if LastNoclipState and not Current then
+
+		local Character = LocalPlayer.Character
+
+		if Character then
+
+			for _, Object in ipairs(Character:GetDescendants()) do
+
+				if Object:IsA("BasePart") then
+					Object.CanCollide = true
+				end
+
+			end
+
+		end
+	end
+
+	LastNoclipState = Current
+end)
+
+--==================================================
+-- VERTICAL TP
 --==================================================
 
 Section("↕️ VERTICAL TP")
@@ -318,6 +382,7 @@ local UpButton = Button("TP 100 STUDS UP")
 local DownButton = Button("TP 10 STUDS DOWN")
 
 local function GetRoot()
+
 	local Character = LocalPlayer.Character
 
 	if not Character then
@@ -328,6 +393,7 @@ local function GetRoot()
 end
 
 UpButton.MouseButton1Click:Connect(function()
+
 	local Root = GetRoot()
 
 	if Root then
@@ -337,6 +403,7 @@ UpButton.MouseButton1Click:Connect(function()
 end)
 
 DownButton.MouseButton1Click:Connect(function()
+
 	local Root = GetRoot()
 
 	if Root then
@@ -360,6 +427,7 @@ local TPPartButton =
 	Button("TP TO PART")
 
 local function FindPart(Name)
+
 	if Name == "" then
 		return nil
 	end
@@ -367,33 +435,42 @@ local function FindPart(Name)
 	local Wanted = string.lower(Name)
 
 	for _, Object in ipairs(workspace:GetDescendants()) do
+
 		if Object:IsA("BasePart") then
+
 			if string.lower(Object.Name) == Wanted then
 				return Object
 			end
+
 		end
 	end
 
 	return nil
 end
 
--- Local-only visual removal
 DeletePartButton.MouseButton1Click:Connect(function()
+
 	local Part = FindPart(PartBox.Text)
 
 	if Part then
+
+		-- Local visual deletion
 		Part.LocalTransparencyModifier = 1
 		Part.CanCollide = false
+
 	end
 end)
 
 TPPartButton.MouseButton1Click:Connect(function()
+
 	local Part = FindPart(PartBox.Text)
 	local Root = GetRoot()
 
 	if Part and Root then
+
 		Root.CFrame =
 			Part.CFrame + Vector3.new(0, 4, 0)
+
 	end
 end)
 
@@ -401,34 +478,31 @@ end)
 -- ESP
 --==================================================
 
-Section("👁️ ESP HIGHLIGHTS")
+Section("👁️ ESP")
 
-local ESPBox =
-	TextBox("Display name prefix...")
+local ESPButton, IsESP =
+	Toggle("ESP ALL PLAYERS")
 
-local HighlightButton =
-	Button("HIGHLIGHT PLAYER")
-
-local RemoveHighlightButton =
-	Button("REMOVE HIGHLIGHT")
-
-local function GetESPColor(Player)
+local function GetTeamColor(Player)
 
 	-- No team = red
 	if Player.Team == nil then
 		return RED
 	end
 
-	-- If all players share the same team, use red
+	-- Determine whether there is actually
+	-- more than one team in the server.
 	local DifferentTeam = false
 
 	for _, Other in ipairs(Players:GetPlayers()) do
+
 		if Other ~= Player
 			and Other.Team ~= nil
 			and Other.Team ~= Player.Team then
 
 			DifferentTeam = true
 			break
+
 		end
 	end
 
@@ -439,36 +513,12 @@ local function GetESPColor(Player)
 	return Player.TeamColor.Color
 end
 
-local function AddHighlight(Player, Color)
-	local Character = Player.Character
-
-	if not Character then
-		return
-	end
-
-	local Existing =
-		Character:FindFirstChild("MalevolentHighlight")
-
-	if Existing then
-		Existing.FillColor = Color
-		Existing.OutlineColor = Color
-		return
-	end
-
-	local Highlight = Instance.new("Highlight")
-	Highlight.Name = "MalevolentHighlight"
-	Highlight.Adornee = Character
-	Highlight.FillColor = Color
-	Highlight.OutlineColor = Color
-	Highlight.FillTransparency = 0.5
-	Highlight.OutlineTransparency = 0
-	Highlight.DepthMode =
-		Enum.HighlightDepthMode.AlwaysOnTop
-
-	Highlight.Parent = Character
+local function IsPermanent(Player)
+	return PermanentPlayers[Player] == true
 end
 
-local function RemoveHighlight(Player)
+local function RemoveNormalHighlight(Player)
+
 	local Character = Player.Character
 
 	if not Character then
@@ -476,27 +526,79 @@ local function RemoveHighlight(Player)
 	end
 
 	local Highlight =
-		Character:FindFirstChild("MalevolentHighlight")
+		Character:FindFirstChild("MalevolentESP")
 
 	if Highlight then
 		Highlight:Destroy()
 	end
 end
 
-HighlightButton.MouseButton1Click:Connect(function()
-	local Target = FindPlayer(ESPBox.Text)
+local function ApplyNormalHighlight(Player)
 
-	if Target then
-		AddHighlight(Target, GetESPColor(Target))
+	if Player == LocalPlayer then
+		return
 	end
-end)
 
-RemoveHighlightButton.MouseButton1Click:Connect(function()
-	local Target = FindPlayer(ESPBox.Text)
+	local Character = Player.Character
 
-	if Target then
-		RemoveHighlight(Target)
+	if not Character then
+		return
 	end
+
+	-- Permanent purple always overrides ESP
+	if IsPermanent(Player) then
+		RemoveNormalHighlight(Player)
+		return
+	end
+
+	local Existing =
+		Character:FindFirstChild("MalevolentESP")
+
+	if not Existing then
+
+		Existing = Instance.new("Highlight")
+		Existing.Name = "MalevolentESP"
+		Existing.Adornee = Character
+		Existing.FillTransparency = 0.5
+		Existing.OutlineTransparency = 0
+		Existing.DepthMode =
+			Enum.HighlightDepthMode.AlwaysOnTop
+
+		Existing.Parent = Character
+
+	end
+
+	local Color = GetTeamColor(Player)
+
+	Existing.FillColor = Color
+	Existing.OutlineColor = Color
+end
+
+local function UpdateESP()
+
+	for _, Player in ipairs(Players:GetPlayers()) do
+
+		if Player ~= LocalPlayer then
+
+			if IsESP() then
+				ApplyNormalHighlight(Player)
+			else
+				RemoveNormalHighlight(Player)
+			end
+
+		end
+
+	end
+end
+
+-- Update continuously so respawns/team changes
+-- are automatically handled.
+RunService.Heartbeat:Connect(function()
+
+	if IsESP() then
+		UpdateESP()
+	end
+
 end)
 
 --==================================================
@@ -511,10 +613,8 @@ local PermanentBox =
 local InsertUserButton =
 	Button("INSERT USER")
 
-local PermanentTarget = nil
-local PermanentCharacterConnection = nil
-
 local function FindUsername(Name)
+
 	if Name == "" then
 		return nil
 	end
@@ -522,29 +622,33 @@ local function FindUsername(Name)
 	local Wanted = string.lower(Name)
 
 	for _, Player in ipairs(Players:GetPlayers()) do
+
 		if string.lower(Player.Name) == Wanted then
 			return Player
 		end
+
 	end
 
 	return nil
 end
 
-local function ApplyPermanentHighlight()
-	if not PermanentTarget then
+local function ApplyPurpleHighlight(Player)
+
+	if not Player then
 		return
 	end
 
-	local Character = PermanentTarget.Character
+	local Character = Player.Character
 
 	if not Character then
 		return
 	end
 
+	-- Remove normal ESP first
+	RemoveNormalHighlight(Player)
+
 	local Existing =
-		Character:FindFirstChild(
-			"MalevolentPermanentHighlight"
-		)
+		Character:FindFirstChild("MalevolentPermanent")
 
 	if Existing then
 		return
@@ -552,9 +656,7 @@ local function ApplyPermanentHighlight()
 
 	local Highlight = Instance.new("Highlight")
 
-	Highlight.Name =
-		"MalevolentPermanentHighlight"
-
+	Highlight.Name = "MalevolentPermanent"
 	Highlight.Adornee = Character
 	Highlight.FillColor = PURPLE
 	Highlight.OutlineColor = PURPLE
@@ -568,34 +670,64 @@ end
 
 InsertUserButton.MouseButton1Click:Connect(function()
 
-	local Target =
+	local Player =
 		FindUsername(PermanentBox.Text)
 
-	if not Target then
+	if not Player then
 		return
 	end
 
-	if PermanentCharacterConnection then
-		PermanentCharacterConnection:Disconnect()
-		PermanentCharacterConnection = nil
-	end
+	PermanentPlayers[Player] = true
 
-	PermanentTarget = Target
+	ApplyPurpleHighlight(Player)
 
-	PermanentCharacterConnection =
-		Target.CharacterAdded:Connect(function()
-			task.wait(0.25)
-			ApplyPermanentHighlight()
-		end)
+	-- Reapply after respawn
+	Player.CharacterAdded:Connect(function()
 
-	ApplyPermanentHighlight()
+		task.wait(0.25)
+
+		if PermanentPlayers[Player] then
+			ApplyPurpleHighlight(Player)
+		end
+
+	end)
 end)
 
--- Keep the purple highlight present
+-- Keep permanent players purple
 RunService.Heartbeat:Connect(function()
-	if PermanentTarget then
-		ApplyPermanentHighlight()
+
+	for Player in pairs(PermanentPlayers) do
+
+		if Player.Parent == Players then
+			ApplyPurpleHighlight(Player)
+		end
+
 	end
+
+end)
+
+--==================================================
+-- PLAYER JOIN / LEAVE
+--==================================================
+
+Players.PlayerAdded:Connect(function(Player)
+
+	Player.CharacterAdded:Connect(function()
+
+		task.wait(0.25)
+
+		if IsESP() then
+			ApplyNormalHighlight(Player)
+		end
+
+	end)
+
+end)
+
+Players.PlayerRemoving:Connect(function(Player)
+
+	PermanentPlayers[Player] = nil
+
 end)
 
 --==================================================
@@ -627,17 +759,17 @@ CollapseStroke.Color = RED
 CollapseStroke.Thickness = 2
 CollapseStroke.Parent = CollapseButton
 
-local Open = true
-
 CollapseButton.MouseButton1Click:Connect(function()
-	Open = not Open
-	Main.Visible = Open
 
-	if Open then
+	MainOpen = not MainOpen
+	Main.Visible = MainOpen
+
+	if MainOpen then
 		CollapseButton.Text = "M"
 	else
 		CollapseButton.Text = "+"
 	end
+
 end)
 
 --==================================================
@@ -666,11 +798,14 @@ local function MakeDraggable(Object, CanDrag)
 		StartPosition = Object.Position
 
 		Input.Changed:Connect(function()
+
 			if Input.UserInputState ==
 				Enum.UserInputState.End then
 
 				Dragging = false
+
 			end
+
 		end)
 	end)
 
@@ -698,10 +833,12 @@ local function MakeDraggable(Object, CanDrag)
 	end)
 end
 
+-- Main obeys lock
 MakeDraggable(Main, function()
 	return not Locked
 end)
 
+-- M button is always draggable
 MakeDraggable(CollapseButton, function()
 	return true
 end)
