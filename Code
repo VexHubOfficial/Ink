@@ -7,11 +7,14 @@
 --// • Client Unanchor
 --// • Highlight Part
 --// • RED / BLUE / GREEN / X
---// • Exclude Rendered Parts (ONE-TIME ACTION)
---// • Excludes matching parts within 10 studs
+--// • Exclude Rendered Parts = one-time action
+--// • Excludes parts within 10 studs
 --// • Bring all parts to me
---// • Bring me to all parts at 24 studs/sec
---// • Bring me to closest part
+--// • Fly me to every part at 24 studs/sec
+--// • Fly me to closest part
+--//
+--// NOTE:
+--// Intended for your own Roblox experience.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -24,23 +27,19 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- SETTINGS
 --==================================================
 
-local highlightEnabled = false
-local highlightColor = Color3.fromRGB(255, 60, 60)
+local HIGHLIGHT_COLOR = Color3.fromRGB(255, 60, 60)
 
+local TRAVEL_SPEED = 24
+local EXCLUDE_DISTANCE = 10
+
+local BRING_SPEED = 150
+local BRING_DURATION = 4
+
+local highlightEnabled = false
 local unanchorEnabled = false
 
--- Parts within this distance are excluded
--- when the Exclude Rendered Parts button is pressed.
-local renderDistance = 10
-
--- Player movement speed for "Bring me to all parts".
-local travelSpeed = 24
-
-local bringSpeed = 150
-local bringDuration = 4
-
--- Parts excluded by the action button.
 local excludedParts = {}
+local highlights = {}
 
 --==================================================
 -- GUI
@@ -57,7 +56,6 @@ gui.Parent = playerGui
 --==================================================
 
 local collapse = Instance.new("TextButton")
-collapse.Name = "Collapse"
 collapse.Size = UDim2.fromOffset(58, 38)
 collapse.Position = UDim2.new(0, 15, 0.5, -19)
 collapse.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
@@ -75,15 +73,13 @@ collapseCorner.Parent = collapse
 
 local collapseStroke = Instance.new("UIStroke")
 collapseStroke.Color = Color3.fromRGB(70, 70, 70)
-collapseStroke.Thickness = 1
 collapseStroke.Parent = collapse
 
 --==================================================
--- MAIN FRAME
+-- MAIN
 --==================================================
 
 local main = Instance.new("Frame")
-main.Name = "Main"
 main.Size = UDim2.fromOffset(310, 510)
 main.Position = UDim2.new(0.5, -155, 0.5, -255)
 main.BackgroundColor3 = Color3.fromRGB(17, 17, 17)
@@ -96,7 +92,6 @@ mainCorner.Parent = main
 
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Color3.fromRGB(55, 55, 55)
-mainStroke.Thickness = 1
 mainStroke.Parent = main
 
 --==================================================
@@ -130,7 +125,6 @@ subtitle.Parent = main
 --==================================================
 
 local box = Instance.new("TextBox")
-box.Name = "PartVal"
 box.Size = UDim2.new(1, -30, 0, 40)
 box.Position = UDim2.fromOffset(15, 65)
 box.BackgroundColor3 = Color3.fromRGB(29, 29, 29)
@@ -149,82 +143,13 @@ boxCorner.CornerRadius = UDim.new(0, 8)
 boxCorner.Parent = box
 
 --==================================================
--- HIGHLIGHT BUTTON
+-- BUTTON CREATOR
 --==================================================
 
-local highlightButton = Instance.new("TextButton")
-highlightButton.Size = UDim2.new(1, -30, 0, 38)
-highlightButton.Position = UDim2.fromOffset(15, 113)
-highlightButton.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
-highlightButton.BorderSizePixel = 0
-highlightButton.Text = "Highlight Part  •  OFF"
-highlightButton.TextColor3 = Color3.new(1, 1, 1)
-highlightButton.TextSize = 14
-highlightButton.Font = Enum.Font.GothamBold
-highlightButton.AutoButtonColor = false
-highlightButton.Parent = main
-
-local highlightCorner = Instance.new("UICorner")
-highlightCorner.CornerRadius = UDim.new(0, 8)
-highlightCorner.Parent = highlightButton
-
---==================================================
--- COLOR BUTTONS
---==================================================
-
-local function createColorButton(text, color, position)
+local function makeButton(text, y, height)
 	local button = Instance.new("TextButton")
 
-	button.Size = UDim2.fromOffset(65, 31)
-	button.Position = position
-	button.BackgroundColor3 = color
-	button.BorderSizePixel = 0
-	button.Text = text
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.TextSize = 12
-	button.Font = Enum.Font.GothamBold
-	button.AutoButtonColor = false
-	button.Parent = main
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 7)
-	corner.Parent = button
-
-	return button
-end
-
-local redButton = createColorButton(
-	"RED",
-	Color3.fromRGB(190, 45, 45),
-	UDim2.fromOffset(15, 160)
-)
-
-local blueButton = createColorButton(
-	"BLUE",
-	Color3.fromRGB(45, 100, 200),
-	UDim2.fromOffset(85, 160)
-)
-
-local greenButton = createColorButton(
-	"GREEN",
-	Color3.fromRGB(45, 170, 75),
-	UDim2.fromOffset(155, 160)
-)
-
-local clearButton = createColorButton(
-	"X",
-	Color3.fromRGB(45, 45, 45),
-	UDim2.fromOffset(225, 160)
-)
-
---==================================================
--- ACTION BUTTON CREATOR
---==================================================
-
-local function createActionButton(text, y)
-	local button = Instance.new("TextButton")
-
-	button.Size = UDim2.new(1, -30, 0, 45)
+	button.Size = UDim2.new(1, -30, 0, height or 45)
 	button.Position = UDim2.fromOffset(15, y)
 	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	button.BorderSizePixel = 0
@@ -241,43 +166,76 @@ local function createActionButton(text, y)
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(50, 50, 50)
-	stroke.Thickness = 1
 	stroke.Parent = button
 
 	return button
 end
 
 --==================================================
+-- HIGHLIGHT
+--==================================================
+
+local highlightButton =
+	makeButton("Highlight Part  •  OFF", 113, 38)
+
+--==================================================
+-- COLORS
+--==================================================
+
+local function makeColorButton(text, color, x)
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.fromOffset(65, 31)
+	button.Position = UDim2.fromOffset(x, 160)
+	button.BackgroundColor3 = color
+	button.BorderSizePixel = 0
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 12
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 7)
+	corner.Parent = button
+
+	return button
+end
+
+local redButton =
+	makeColorButton("RED", Color3.fromRGB(190, 45, 45), 15)
+
+local blueButton =
+	makeColorButton("BLUE", Color3.fromRGB(45, 100, 200), 85)
+
+local greenButton =
+	makeColorButton("GREEN", Color3.fromRGB(45, 170, 75), 155)
+
+local clearButton =
+	makeColorButton("X", Color3.fromRGB(45, 45, 45), 225)
+
+--==================================================
 -- ACTION BUTTONS
 --==================================================
 
-local excludeButton = createActionButton(
-	"Exclude Rendered Parts",
-	205
-)
+local excludeButton =
+	makeButton("Exclude Rendered Parts", 205, 45)
 
-local unanchorButton = createActionButton(
-	"Client Unanchor  •  OFF",
-	260
-)
+local unanchorButton =
+	makeButton("Client Unanchor  •  OFF", 260, 45)
 
-local bringAll = createActionButton(
-	"Bring all parts to me",
-	315
-)
+local bringAll =
+	makeButton("Bring all parts to me", 315, 45)
 
-local bringMeAll = createActionButton(
-	"Bring me to all parts  •  24 studs/sec",
-	370
-)
+local flyAll =
+	makeButton("Fly me to all parts  •  24 studs/sec", 370, 45)
 
-local closest = createActionButton(
-	"Bring me to closest part",
-	425
-)
+local closest =
+	makeButton("Fly me to closest part  •  24 studs/sec", 425, 45)
 
 --==================================================
--- GET ROOT
+-- CHARACTER
 --==================================================
 
 local function getRoot()
@@ -291,48 +249,48 @@ local function getRoot()
 end
 
 --==================================================
--- GET MATCHING PARTS
+-- PART SEARCH
 --==================================================
 
 local function getParts()
-	local wantedName = box.Text
+	local name = box.Text
 
-	if wantedName == "" then
+	if name == "" then
 		return {}
 	end
 
-	local parts = {}
+	local result = {}
 
 	for _, object in ipairs(workspace:GetDescendants()) do
 
 		if object:IsA("BasePart")
-			and object.Name == wantedName
+			and object.Name == name
 			and not excludedParts[object] then
 
-			table.insert(parts, object)
+			table.insert(result, object)
 		end
 	end
 
-	return parts
+	return result
 end
 
 --==================================================
 -- EXCLUDE RENDERED PARTS
 --==================================================
+-- ONE-TIME ACTION.
+--
+-- Any matching part within 10 studs of the player
+-- is added to the excluded list.
 
 excludeButton.MouseButton1Click:Connect(function()
 
 	local root = getRoot()
 
-	if not root then
+	if not root or box.Text == "" then
 		return
 	end
 
-	if box.Text == "" then
-		return
-	end
-
-	local excludedCount = 0
+	local count = 0
 
 	for _, object in ipairs(workspace:GetDescendants()) do
 
@@ -342,12 +300,11 @@ excludeButton.MouseButton1Click:Connect(function()
 			local distance =
 				(object.Position - root.Position).Magnitude
 
-			if distance <= renderDistance
+			if distance <= EXCLUDE_DISTANCE
 				and not excludedParts[object] then
 
 				excludedParts[object] = true
-				excludedCount += 1
-
+				count += 1
 			end
 		end
 	end
@@ -355,22 +312,14 @@ excludeButton.MouseButton1Click:Connect(function()
 	local oldText = excludeButton.Text
 
 	excludeButton.Text =
-		"Excluded " .. excludedCount .. " Parts"
-
-	excludeButton.BackgroundColor3 =
-		Color3.fromRGB(45, 45, 45)
+		"Excluded " .. count .. " Parts"
 
 	task.delay(1.2, function()
 
 		if excludeButton.Parent then
-
-			excludeButton.Text =
-				oldText
-
-			excludeButton.BackgroundColor3 =
-				Color3.fromRGB(30, 30, 30)
-
+			excludeButton.Text = oldText
 		end
+
 	end)
 
 	if highlightEnabled then
@@ -379,7 +328,7 @@ excludeButton.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- CLIENT UNANCHOR
+-- UNANCHOR
 --==================================================
 
 local function unanchorParts()
@@ -395,7 +344,8 @@ end
 
 unanchorButton.MouseButton1Click:Connect(function()
 
-	unanchorEnabled = not unanchorEnabled
+	unanchorEnabled =
+		not unanchorEnabled
 
 	unanchorButton.Text =
 		"Client Unanchor  •  " ..
@@ -409,8 +359,6 @@ end)
 --==================================================
 -- HIGHLIGHTS
 --==================================================
-
-local highlights = {}
 
 local function clearHighlights()
 
@@ -437,7 +385,8 @@ function updateHighlights()
 
 		if part and part.Parent then
 
-			local highlight = Instance.new("Highlight")
+			local highlight =
+				Instance.new("Highlight")
 
 			highlight.Name =
 				"PartBringerHighlight"
@@ -446,16 +395,13 @@ function updateHighlights()
 				part
 
 			highlight.FillColor =
-				highlightColor
+				HIGHLIGHT_COLOR
 
 			highlight.OutlineColor =
-				highlightColor
+				HIGHLIGHT_COLOR
 
 			highlight.FillTransparency =
 				0.5
-
-			highlight.OutlineTransparency =
-				0
 
 			highlight.DepthMode =
 				Enum.HighlightDepthMode.AlwaysOnTop
@@ -485,7 +431,7 @@ end)
 
 redButton.MouseButton1Click:Connect(function()
 
-	highlightColor =
+	HIGHLIGHT_COLOR =
 		Color3.fromRGB(255, 60, 60)
 
 	updateHighlights()
@@ -493,7 +439,7 @@ end)
 
 blueButton.MouseButton1Click:Connect(function()
 
-	highlightColor =
+	HIGHLIGHT_COLOR =
 		Color3.fromRGB(60, 130, 255)
 
 	updateHighlights()
@@ -501,7 +447,7 @@ end)
 
 greenButton.MouseButton1Click:Connect(function()
 
-	highlightColor =
+	HIGHLIGHT_COLOR =
 		Color3.fromRGB(60, 255, 100)
 
 	updateHighlights()
@@ -538,158 +484,173 @@ bringAll.MouseButton1Click:Connect(function()
 	for _, part in ipairs(parts) do
 
 		if part and part.Parent then
+
 			part.Anchored = false
+
+			local offset =
+				root.Position - part.Position
+
+			if offset.Magnitude > 2 then
+
+				part.AssemblyLinearVelocity =
+					offset.Unit *
+					math.min(
+						offset.Magnitude * 10,
+						BRING_SPEED
+					)
+			end
+		end
+	end
+end)
+
+--==================================================
+-- FLY TO ONE PART
+--==================================================
+-- Moves the character directly through the air.
+-- Speed is approximately 24 studs per second.
+
+local function flyToPart(part)
+
+	local root = getRoot()
+
+	if not root or not part or not part.Parent then
+		return false
+	end
+
+	local humanoid =
+		root.Parent:FindFirstChildOfClass("Humanoid")
+
+	-- Keep the character from fighting the local
+	-- flight movement.
+
+	local oldAutoRotate
+
+	if humanoid then
+		oldAutoRotate =
+			humanoid.AutoRotate
+
+		humanoid.AutoRotate =
+			false
+	end
+
+	while root.Parent and part.Parent do
+
+		local target =
+			part.Position +
+			Vector3.new(0, 3, 0)
+
+		local offset =
+			target - root.Position
+
+		local distance =
+			offset.Magnitude
+
+		if distance <= 2 then
+			break
 		end
 
+		local dt =
+			RunService.Heartbeat:Wait()
+
+		local step =
+			math.min(
+				TRAVEL_SPEED * dt,
+				distance
+			)
+
+		local newPosition =
+			root.Position +
+			offset.Unit * step
+
+		-- Face the direction we're flying.
+		if offset.Magnitude > 0.01 then
+
+			root.CFrame =
+				CFrame.lookAt(
+					newPosition,
+					newPosition + offset.Unit
+				)
+
+		else
+
+			root.CFrame =
+				CFrame.new(newPosition)
+		end
 	end
+
+	if humanoid and humanoid.Parent then
+		humanoid.AutoRotate =
+			oldAutoRotate
+	end
+
+	return true
+end
+
+--==================================================
+-- FLY TO ALL
+--==================================================
+
+flyAll.MouseButton1Click:Connect(function()
 
 	task.spawn(function()
 
-		local startTime = os.clock()
+		local parts = getParts()
 
-		while os.clock() - startTime <
-			bringDuration do
+		for _, part in ipairs(parts) do
 
-			if not root.Parent then
-				break
+			if not part or not part.Parent then
+				continue
 			end
 
-			for _, part in ipairs(parts) do
+			flyToPart(part)
 
-				if part and part.Parent then
-
-					part.Anchored = false
-
-					local offset =
-						root.Position -
-						part.Position
-
-					local distance =
-						offset.Magnitude
-
-					if distance > 3 then
-
-						part.AssemblyLinearVelocity =
-							offset.Unit *
-							math.min(
-								distance * 10,
-								bringSpeed
-							)
-
-					else
-
-						part.AssemblyLinearVelocity =
-							Vector3.zero
-
-					end
-
-					part.AssemblyAngularVelocity =
-						Vector3.zero
-
-				end
-			end
-
-			RunService.Heartbeat:Wait()
+			-- Tiny pause before selecting the next part.
+			task.wait(0.05)
 		end
 	end)
 end)
 
 --==================================================
--- BRING PLAYER TO ALL PARTS
---==================================================
--- Moves at approximately 24 studs per second.
--- Does NOT instantly teleport between parts.
-
-bringMeAll.MouseButton1Click:Connect(function()
-
-	local root = getRoot()
-
-	if not root then
-		return
-	end
-
-	local parts = getParts()
-
-	for _, part in ipairs(parts) do
-
-		if part and part.Parent then
-
-			while root.Parent
-				and part.Parent do
-
-				local target =
-					part.Position +
-					Vector3.new(0, 3, 0)
-
-				local offset =
-					target - root.Position
-
-				local distance =
-					offset.Magnitude
-
-				if distance <= 2 then
-					break
-				end
-
-				local deltaTime =
-					RunService.Heartbeat:Wait()
-
-				local step =
-					math.min(
-						travelSpeed * deltaTime,
-						distance
-					)
-
-				root.CFrame =
-					root.CFrame +
-					offset.Unit * step
-			end
-		end
-	end
-end)
-
---==================================================
--- BRING PLAYER TO CLOSEST PART
+-- FLY TO CLOSEST
 --==================================================
 
 closest.MouseButton1Click:Connect(function()
 
-	local root = getRoot()
+	task.spawn(function()
 
-	if not root then
-		return
-	end
+		local root = getRoot()
 
-	local closestPart = nil
-	local closestDistance = math.huge
+		if not root then
+			return
+		end
 
-	for _, part in ipairs(getParts()) do
+		local closestPart
+		local closestDistance = math.huge
 
-		if part and part.Parent then
+		for _, part in ipairs(getParts()) do
 
-			local distance =
-				(part.Position -
-					root.Position).Magnitude
+			if part and part.Parent then
 
-			if distance < closestDistance then
+				local distance =
+					(part.Position -
+						root.Position).Magnitude
 
-				closestDistance =
-					distance
+				if distance < closestDistance then
 
-				closestPart =
-					part
+					closestDistance =
+						distance
 
+					closestPart =
+						part
+
+				end
 			end
 		end
-	end
 
-	if closestPart then
-
-		root.CFrame =
-			closestPart.CFrame +
-			Vector3.new(0, 3, 0)
-
-	end
+		if closestPart then
+			flyToPart(closestPart)
+		end
+	end)
 end)
 
 --==================================================
@@ -724,7 +685,6 @@ collapse.MouseButton1Click:Connect(function()
 
 	collapse.Text =
 		expanded and "PB" or ">"
-
 end)
 
 --==================================================
@@ -745,12 +705,8 @@ local function makeDraggable(object)
 			Enum.UserInputType.Touch then
 
 			dragging = true
-
-			dragStart =
-				input.Position
-
-			startPosition =
-				object.Position
+			dragStart = input.Position
+			startPosition = object.Position
 
 			input.Changed:Connect(function()
 
@@ -758,7 +714,6 @@ local function makeDraggable(object)
 					Enum.UserInputState.End then
 
 					dragging = false
-
 				end
 			end)
 		end
@@ -776,19 +731,16 @@ local function makeDraggable(object)
 			Enum.UserInputType.Touch then
 
 			local delta =
-				input.Position -
-				dragStart
+				input.Position - dragStart
 
 			object.Position =
 				UDim2.new(
 
 					startPosition.X.Scale,
-					startPosition.X.Offset +
-						delta.X,
+					startPosition.X.Offset + delta.X,
 
 					startPosition.Y.Scale,
-					startPosition.Y.Offset +
-						delta.Y
+					startPosition.Y.Offset + delta.Y
 				)
 		end
 	end)
