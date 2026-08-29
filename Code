@@ -1,17 +1,17 @@
 --// PART BRINGER
 --// LOCAL SCRIPT
 --//
---// Features:
---// • Draggable collapse button
---// • Part Val
---// • Automatically includes matching parts within 500 studs
---// • Automatically highlights included parts purple
---// • Highlight Part toggle
---// • RED / BLUE / GREEN / X color controls
+--// Includes matching parts within 500 studs.
+--// Included parts are automatically highlighted purple.
+--//
+--// Buttons:
+--// • Include Within 500 Studs
+--// • Highlight Part
+--// • RED / BLUE / GREEN / X
 --// • Client Unanchor
 --// • Bring all parts to me
---// • Fly me to all parts at 24 studs/sec
---// • Fly me to closest part at 24 studs/sec
+--// • Fly me to all parts @ 24 studs/sec
+--// • Fly me to closest part @ 24 studs/sec
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -27,14 +27,11 @@ local playerGui = player:WaitForChild("PlayerGui")
 local INCLUDE_DISTANCE = 500
 local TRAVEL_SPEED = 24
 
-local BRING_SPEED = 150
-local BRING_DURATION = 4
-
-local highlightEnabled = true
 local highlightColor = Color3.fromRGB(170, 70, 255)
-
+local highlightEnabled = true
 local unanchorEnabled = false
 
+local includedParts = {}
 local highlights = {}
 
 --==================================================
@@ -64,17 +61,17 @@ collapse.Font = Enum.Font.GothamBold
 collapse.AutoButtonColor = false
 collapse.Parent = gui
 
-local collapseCorner = Instance.new("UICorner")
-collapseCorner.CornerRadius = UDim.new(0, 9)
-collapseCorner.Parent = collapse
+local cc = Instance.new("UICorner")
+cc.CornerRadius = UDim.new(0, 9)
+cc.Parent = collapse
 
-local collapseStroke = Instance.new("UIStroke")
-collapseStroke.Color = Color3.fromRGB(90, 55, 120)
-collapseStroke.Thickness = 1
-collapseStroke.Parent = collapse
+local cs = Instance.new("UIStroke")
+cs.Color = Color3.fromRGB(150, 70, 220)
+cs.Thickness = 1
+cs.Parent = collapse
 
 --==================================================
--- MAIN FRAME
+-- MAIN
 --==================================================
 
 local main = Instance.new("Frame")
@@ -85,14 +82,14 @@ main.BackgroundColor3 = Color3.fromRGB(17, 17, 17)
 main.BorderSizePixel = 0
 main.Parent = gui
 
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 13)
-mainCorner.Parent = main
+local mc = Instance.new("UICorner")
+mc.CornerRadius = UDim.new(0, 13)
+mc.Parent = main
 
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(65, 45, 80)
-mainStroke.Thickness = 1
-mainStroke.Parent = main
+local ms = Instance.new("UIStroke")
+ms.Color = Color3.fromRGB(65, 45, 80)
+ms.Thickness = 1
+ms.Parent = main
 
 --==================================================
 -- TITLE
@@ -113,7 +110,7 @@ local subtitle = Instance.new("TextLabel")
 subtitle.Size = UDim2.new(1, -30, 0, 20)
 subtitle.Position = UDim2.fromOffset(15, 38)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "500 stud local range"
+subtitle.Text = "Client-side part controls"
 subtitle.TextColor3 = Color3.fromRGB(155, 120, 180)
 subtitle.TextSize = 11
 subtitle.Font = Enum.Font.Gotham
@@ -121,7 +118,7 @@ subtitle.TextXAlignment = Enum.TextXAlignment.Left
 subtitle.Parent = main
 
 --==================================================
--- PART VALUE
+-- PART VAL
 --==================================================
 
 local box = Instance.new("TextBox")
@@ -139,80 +136,19 @@ box.Font = Enum.Font.Gotham
 box.ClearTextOnFocus = false
 box.Parent = main
 
-local boxCorner = Instance.new("UICorner")
-boxCorner.CornerRadius = UDim.new(0, 8)
-boxCorner.Parent = box
+local bc = Instance.new("UICorner")
+bc.CornerRadius = UDim.new(0, 8)
+bc.Parent = box
 
 --==================================================
--- HIGHLIGHT BUTTON
+-- BUTTON CREATOR
 --==================================================
 
-local highlightButton = Instance.new("TextButton")
-highlightButton.Size = UDim2.new(1, -30, 0, 38)
-highlightButton.Position = UDim2.fromOffset(15, 113)
-highlightButton.BackgroundColor3 = Color3.fromRGB(42, 28, 52)
-highlightButton.BorderSizePixel = 0
-highlightButton.Text = "Highlight Part  •  ON"
-highlightButton.TextColor3 = Color3.new(1, 1, 1)
-highlightButton.TextSize = 14
-highlightButton.Font = Enum.Font.GothamBold
-highlightButton.AutoButtonColor = false
-highlightButton.Parent = main
+local function makeButton(text, y, height)
 
-local highlightCorner = Instance.new("UICorner")
-highlightCorner.CornerRadius = UDim.new(0, 8)
-highlightCorner.Parent = highlightButton
-
-local highlightStroke = Instance.new("UIStroke")
-highlightStroke.Color = Color3.fromRGB(150, 70, 220)
-highlightStroke.Thickness = 1
-highlightStroke.Parent = highlightButton
-
---==================================================
--- COLOR BUTTON CREATOR
---==================================================
-
-local function makeColorButton(text, color, x)
 	local button = Instance.new("TextButton")
 
-	button.Size = UDim2.fromOffset(65, 31)
-	button.Position = UDim2.fromOffset(x, 160)
-	button.BackgroundColor3 = color
-	button.BorderSizePixel = 0
-	button.Text = text
-	button.TextColor3 = Color3.new(1, 1, 1)
-	button.TextSize = 12
-	button.Font = Enum.Font.GothamBold
-	button.AutoButtonColor = false
-	button.Parent = main
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 7)
-	corner.Parent = button
-
-	return button
-end
-
-local redButton =
-	makeColorButton("RED", Color3.fromRGB(190, 45, 45), 15)
-
-local blueButton =
-	makeColorButton("BLUE", Color3.fromRGB(45, 100, 200), 85)
-
-local greenButton =
-	makeColorButton("GREEN", Color3.fromRGB(45, 170, 75), 155)
-
-local clearButton =
-	makeColorButton("X", Color3.fromRGB(45, 45, 45), 225)
-
---==================================================
--- ACTION BUTTON CREATOR
---==================================================
-
-local function makeActionButton(text, y)
-	local button = Instance.new("TextButton")
-
-	button.Size = UDim2.new(1, -30, 0, 45)
+	button.Size = UDim2.new(1, -30, 0, height or 45)
 	button.Position = UDim2.fromOffset(15, y)
 	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	button.BorderSizePixel = 0
@@ -236,84 +172,135 @@ local function makeActionButton(text, y)
 end
 
 --==================================================
--- ACTION BUTTONS
+-- BUTTONS
 --==================================================
 
-local rangeLabel = Instance.new("TextLabel")
-rangeLabel.Size = UDim2.new(1, -30, 0, 22)
-rangeLabel.Position = UDim2.fromOffset(15, 202)
-rangeLabel.BackgroundTransparency = 1
-rangeLabel.Text = "AUTO INCLUDE  •  WITHIN 500 STUDS"
-rangeLabel.TextColor3 = Color3.fromRGB(175, 120, 220)
-rangeLabel.TextSize = 10
-rangeLabel.Font = Enum.Font.GothamBold
-rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
-rangeLabel.Parent = main
+local includeButton =
+	makeButton("Include Within 500 Studs", 113, 42)
+
+local highlightButton =
+	makeButton("Highlight Part  •  ON", 163, 38)
+
+--==================================================
+-- COLOR BUTTONS
+--==================================================
+
+local function makeColorButton(text, color, x)
+
+	local button = Instance.new("TextButton")
+
+	button.Size = UDim2.fromOffset(65, 31)
+	button.Position = UDim2.fromOffset(x, 209)
+	button.BackgroundColor3 = color
+	button.BorderSizePixel = 0
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.TextSize = 12
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = false
+	button.Parent = main
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 7)
+	corner.Parent = button
+
+	return button
+end
+
+local redButton =
+	makeColorButton(
+		"RED",
+		Color3.fromRGB(190, 45, 45),
+		15
+	)
+
+local blueButton =
+	makeColorButton(
+		"BLUE",
+		Color3.fromRGB(45, 100, 200),
+		85
+	)
+
+local greenButton =
+	makeColorButton(
+		"GREEN",
+		Color3.fromRGB(45, 170, 75),
+		155
+	)
+
+local clearButton =
+	makeColorButton(
+		"X",
+		Color3.fromRGB(45, 45, 45),
+		225
+	)
+
+--==================================================
+-- STATUS
+--==================================================
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -30, 0, 22)
+status.Position = UDim2.fromOffset(15, 248)
+status.BackgroundTransparency = 1
+status.Text = "Included: 0 parts"
+status.TextColor3 = Color3.fromRGB(170, 120, 210)
+status.TextSize = 11
+status.Font = Enum.Font.GothamBold
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = main
+
+--==================================================
+-- OTHER BUTTONS
+--==================================================
 
 local unanchorButton =
-	makeActionButton("Client Unanchor  •  OFF", 225)
+	makeButton(
+		"Client Unanchor  •  OFF",
+		275,
+		42
+	)
 
 local bringAll =
-	makeActionButton("Bring all parts to me", 280)
+	makeButton(
+		"Bring all included parts to me",
+		325,
+		42
+	)
 
 local flyAll =
-	makeActionButton("Fly me to all parts  •  24 studs/sec", 335)
+	makeButton(
+		"Fly me to all  •  24 studs/sec",
+		375,
+		42
+	)
 
 local closest =
-	makeActionButton("Fly me to closest part  •  24 studs/sec", 390)
+	makeButton(
+		"Fly me to closest  •  24 studs/sec",
+		425,
+		42
+	)
 
 --==================================================
--- GET CHARACTER ROOT
+-- ROOT
 --==================================================
 
 local function getRoot()
+
 	local character = player.Character
 
 	if not character then
 		return nil
 	end
 
-	return character:FindFirstChild("HumanoidRootPart")
+	return character:FindFirstChild(
+		"HumanoidRootPart"
+	)
 end
 
 --==================================================
--- GET PARTS WITHIN 500 STUDS
---==================================================
-
-local function getParts()
-	local root = getRoot()
-
-	if not root then
-		return {}
-	end
-
-	local wantedName = box.Text
-
-	if wantedName == "" then
-		return {}
-	end
-
-	local parts = {}
-
-	for _, object in ipairs(workspace:GetDescendants()) do
-
-		if object:IsA("BasePart")
-			and object.Name == wantedName then
-
-			local distance =
-				(object.Position - root.Position).Magnitude
-
-			if distance <= INCLUDE_DISTANCE then
-				table.insert(parts, object)
-			end
-		end
-	end
-
-	return parts
-end
-
---==================================================
--- HIGHLIGHT CLEANUP
+-- CLEAR HIGHLIGHTS
 --==================================================
 
 local function clearHighlights()
@@ -331,10 +318,45 @@ local function clearHighlights()
 end
 
 --==================================================
--- AUTO PURPLE HIGHLIGHTS
+-- GET MATCHING PARTS WITHIN 500
 --==================================================
 
-local function updateHighlights()
+local function scanIncludedParts()
+
+	local root = getRoot()
+
+	if not root then
+		return {}
+	end
+
+	if box.Text == "" then
+		return {}
+	end
+
+	local result = {}
+
+	for _, object in ipairs(workspace:GetDescendants()) do
+
+		if object:IsA("BasePart")
+			and object.Name == box.Text then
+
+			local distance =
+				(object.Position - root.Position).Magnitude
+
+			if distance <= INCLUDE_DISTANCE then
+				table.insert(result, object)
+			end
+		end
+	end
+
+	return result
+end
+
+--==================================================
+-- APPLY PURPLE HIGHLIGHTS
+--==================================================
+
+local function refreshHighlights()
 
 	clearHighlights()
 
@@ -342,44 +364,67 @@ local function updateHighlights()
 		return
 	end
 
-	for _, part in ipairs(getParts()) do
+	for _, part in ipairs(includedParts) do
 
 		if part and part.Parent then
 
-			local highlight =
+			local h =
 				Instance.new("Highlight")
 
-			highlight.Name =
-				"PartBringerPurpleHighlight"
+			h.Name =
+				"PartBringerIncluded"
 
-			highlight.Adornee =
+			h.Adornee =
 				part
 
-			highlight.FillColor =
+			h.FillColor =
 				highlightColor
 
-			highlight.OutlineColor =
+			h.OutlineColor =
 				highlightColor
 
-			highlight.FillTransparency =
-				0.5
+			h.FillTransparency = 0.5
+			h.OutlineTransparency = 0
 
-			highlight.OutlineTransparency =
-				0
-
-			highlight.DepthMode =
+			h.DepthMode =
 				Enum.HighlightDepthMode.AlwaysOnTop
 
-			highlight.Parent =
-				part
+			h.Parent = part
 
-			table.insert(
-				highlights,
-				highlight
-			)
+			table.insert(highlights, h)
 		end
 	end
 end
+
+--==================================================
+-- INCLUDE BUTTON
+--==================================================
+
+includeButton.MouseButton1Click:Connect(function()
+
+	includedParts =
+		scanIncludedParts()
+
+	refreshHighlights()
+
+	status.Text =
+		"Included: " ..
+		#includedParts ..
+		" parts"
+
+	includeButton.Text =
+		"Included " ..
+		#includedParts ..
+		" Parts"
+
+	task.delay(1.25, function()
+
+		if includeButton.Parent then
+			includeButton.Text =
+				"Include Within 500 Studs"
+		end
+	end)
+end)
 
 --==================================================
 -- HIGHLIGHT TOGGLE
@@ -395,24 +440,19 @@ highlightButton.MouseButton1Click:Connect(function()
 		highlightButton.Text =
 			"Highlight Part  •  ON"
 
-		highlightButton.BackgroundColor3 =
-			Color3.fromRGB(42, 28, 52)
+		refreshHighlights()
 
 	else
 
 		highlightButton.Text =
 			"Highlight Part  •  OFF"
 
-		highlightButton.BackgroundColor3 =
-			Color3.fromRGB(30, 30, 30)
-
+		clearHighlights()
 	end
-
-	updateHighlights()
 end)
 
 --==================================================
--- COLOR CONTROLS
+-- COLOR BUTTONS
 --==================================================
 
 redButton.MouseButton1Click:Connect(function()
@@ -420,7 +460,7 @@ redButton.MouseButton1Click:Connect(function()
 	highlightColor =
 		Color3.fromRGB(255, 60, 60)
 
-	updateHighlights()
+	refreshHighlights()
 end)
 
 blueButton.MouseButton1Click:Connect(function()
@@ -428,7 +468,7 @@ blueButton.MouseButton1Click:Connect(function()
 	highlightColor =
 		Color3.fromRGB(60, 130, 255)
 
-	updateHighlights()
+	refreshHighlights()
 end)
 
 greenButton.MouseButton1Click:Connect(function()
@@ -436,31 +476,21 @@ greenButton.MouseButton1Click:Connect(function()
 	highlightColor =
 		Color3.fromRGB(60, 255, 100)
 
-	updateHighlights()
+	refreshHighlights()
 end)
 
+-- X = RESET TO PURPLE
 clearButton.MouseButton1Click:Connect(function()
 
 	highlightColor =
 		Color3.fromRGB(170, 70, 255)
 
-	updateHighlights()
+	refreshHighlights()
 end)
 
 --==================================================
 -- CLIENT UNANCHOR
 --==================================================
-
-local function unanchorParts()
-
-	for _, part in ipairs(getParts()) do
-
-		if part and part.Parent then
-			part.Anchored = false
-		end
-
-	end
-end
 
 unanchorButton.MouseButton1Click:Connect(function()
 
@@ -472,12 +502,18 @@ unanchorButton.MouseButton1Click:Connect(function()
 		(unanchorEnabled and "ON" or "OFF")
 
 	if unanchorEnabled then
-		unanchorParts()
+
+		for _, part in ipairs(includedParts) do
+
+			if part and part.Parent then
+				part.Anchored = false
+			end
+		end
 	end
 end)
 
 --==================================================
--- BRING ALL PARTS TO ME
+-- BRING ALL INCLUDED PARTS
 --==================================================
 
 bringAll.MouseButton1Click:Connect(function()
@@ -488,13 +524,7 @@ bringAll.MouseButton1Click:Connect(function()
 		return
 	end
 
-	local parts = getParts()
-
-	if #parts == 0 then
-		return
-	end
-
-	for _, part in ipairs(parts) do
+	for _, part in ipairs(includedParts) do
 
 		if part and part.Parent then
 
@@ -503,14 +533,20 @@ bringAll.MouseButton1Click:Connect(function()
 			local offset =
 				root.Position - part.Position
 
-			if offset.Magnitude > 2 then
+			local distance =
+				offset.Magnitude
+
+			if distance > 2 then
 
 				part.AssemblyLinearVelocity =
 					offset.Unit *
 					math.min(
-						offset.Magnitude * 10,
-						BRING_SPEED
+						distance * 10,
+						150
 					)
+
+				part.AssemblyAngularVelocity =
+					Vector3.zero
 			end
 		end
 	end
@@ -528,7 +564,7 @@ local function flyToPart(part)
 		or not part
 		or not part.Parent then
 
-		return false
+		return
 	end
 
 	local humanoid =
@@ -577,19 +613,11 @@ local function flyToPart(part)
 			root.Position +
 			offset.Unit * step
 
-		if offset.Magnitude > 0.01 then
-
-			root.CFrame =
-				CFrame.lookAt(
-					newPosition,
-					newPosition + offset.Unit
-				)
-
-		else
-
-			root.CFrame =
-				CFrame.new(newPosition)
-		end
+		root.CFrame =
+			CFrame.lookAt(
+				newPosition,
+				newPosition + offset.Unit
+			)
 	end
 
 	if humanoid
@@ -598,33 +626,29 @@ local function flyToPart(part)
 		humanoid.AutoRotate =
 			oldAutoRotate
 	end
-
-	return true
 end
 
 --==================================================
--- FLY TO ALL PARTS
+-- FLY TO ALL
 --==================================================
 
 flyAll.MouseButton1Click:Connect(function()
 
 	task.spawn(function()
 
-		local parts = getParts()
-
-		for _, part in ipairs(parts) do
+		for _, part in ipairs(includedParts) do
 
 			if part and part.Parent then
 				flyToPart(part)
-				task.wait(0.05)
 			end
 
+			task.wait(0.05)
 		end
 	end)
 end)
 
 --==================================================
--- FLY TO CLOSEST PART
+-- FLY TO CLOSEST
 --==================================================
 
 closest.MouseButton1Click:Connect(function()
@@ -637,10 +661,10 @@ closest.MouseButton1Click:Connect(function()
 			return
 		end
 
-		local closestPart = nil
+		local closestPart
 		local closestDistance = math.huge
 
-		for _, part in ipairs(getParts()) do
+		for _, part in ipairs(includedParts) do
 
 			if part and part.Parent then
 
@@ -666,15 +690,40 @@ closest.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- AUTOMATIC PURPLE HIGHLIGHT REFRESH
+-- AUTOMATIC RANGE UPDATE
 --==================================================
 
 task.spawn(function()
 
 	while gui.Parent do
 
-		if highlightEnabled then
-			updateHighlights()
+		local newParts =
+			scanIncludedParts()
+
+		local changed = #newParts ~= #includedParts
+
+		if not changed then
+
+			for i, part in ipairs(newParts) do
+
+				if includedParts[i] ~= part then
+					changed = true
+					break
+				end
+			end
+		end
+
+		if changed then
+
+			includedParts =
+				newParts
+
+			status.Text =
+				"Included: " ..
+				#includedParts ..
+				" parts"
+
+			refreshHighlights()
 		end
 
 		task.wait(0.5)
@@ -718,8 +767,12 @@ local function makeDraggable(object)
 			Enum.UserInputType.Touch then
 
 			dragging = true
-			dragStart = input.Position
-			startPosition = object.Position
+
+			dragStart =
+				input.Position
+
+			startPosition =
+				object.Position
 
 			input.Changed:Connect(function()
 
@@ -745,16 +798,19 @@ local function makeDraggable(object)
 			Enum.UserInputType.Touch then
 
 			local delta =
-				input.Position - dragStart
+				input.Position -
+				dragStart
 
 			object.Position =
 				UDim2.new(
 
 					startPosition.X.Scale,
-					startPosition.X.Offset + delta.X,
+					startPosition.X.Offset +
+						delta.X,
 
 					startPosition.Y.Scale,
-					startPosition.Y.Offset + delta.Y
+					startPosition.Y.Offset +
+						delta.Y
 				)
 		end
 	end)
@@ -764,8 +820,15 @@ makeDraggable(main)
 makeDraggable(collapse)
 
 --==================================================
--- INITIAL HIGHLIGHTS
+-- INITIAL STATE
 --==================================================
 
-task.wait(0.5)
-updateHighlights()
+includedParts =
+	scanIncludedParts()
+
+status.Text =
+	"Included: " ..
+	#includedParts ..
+	" parts"
+
+refreshHighlights()
