@@ -30,7 +30,7 @@ local highlightColor = Color3.fromRGB(255, 60, 60)
 
 local unanchorEnabled = false
 
-local renderDistance = 100
+local renderDistance = 10
 
 -- Parts manually excluded by the button.
 local excludedParts = {}
